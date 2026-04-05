@@ -1,4 +1,4 @@
-export type Screen = 'start' | 'input' | 'casting' | 'result' | 'history' | 'profile';
+export type Screen = 'start' | 'input' | 'casting' | 'result' | 'history' | 'profile' | 'daily';
 
 export type Category = '学业功名' | '事业前程' | '情缘发展' | '财运经营' | '寻物杂项';
 
@@ -34,6 +34,7 @@ export interface DivinationRecord {
   hexagramNumber: number;
   changedHexagramNumber: number;
   judgment: string;
+  summary?: string;
   fortune: HexagramData['fortune'];
   lines: number[];
   movingLines: number[];

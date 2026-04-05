@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 
-export function StartScreen({ onStart }: { onStart: () => void }) {
+export function StartScreen({ onStart, onOpenDaily }: { onStart: () => void; onOpenDaily: () => void }) {
   return (
     <motion.div
       key="start"
@@ -40,6 +40,12 @@ export function StartScreen({ onStart }: { onStart: () => void }) {
             每日一卦
           </p>
           <p className="text-xs text-[#171817]/40 tracking-widest">民俗文化研究 · 心理健康辅助</p>
+          <button
+            onClick={onOpenDaily}
+            className="mt-4 px-6 py-2 border border-[#171817]/20 hover:border-secondary hover:text-secondary transition-colors text-sm tracking-widest"
+          >
+            进入每日一卦
+          </button>
         </div>
       </div>
     </motion.div>

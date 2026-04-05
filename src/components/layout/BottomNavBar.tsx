@@ -15,7 +15,7 @@ export function BottomNavBar({
     { id: 'profile', label: '个人', icon: User },
   ];
 
-  const isStartFlow = ['input', 'casting', 'result'].includes(currentScreen);
+  const isStartFlow = ['input', 'casting', 'result', 'daily'].includes(currentScreen);
 
   return (
     <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-12 py-8 bg-[#fcf9f2]/85 backdrop-blur-md border-t border-[#171817]/5">

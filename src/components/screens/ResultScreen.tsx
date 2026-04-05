@@ -28,13 +28,23 @@ function renderLine(line: number, moving: boolean, index: number) {
   );
 }
 
+function movingHint(record: DivinationRecord): string {
+  if (!record.movingLines.length) {
+    return '本卦当前趋于稳定，建议先按既定节奏推进，避免频繁换方向。';
+  }
+  const positions = record.movingLines.join('、');
+  return `动爻在第 ${positions} 爻，提示事情仍在变化中，宜边观察边调整。`;
+}
+
 export function ResultScreen({
   record,
   loading,
+  error,
   onConsultAi,
 }: {
   record: DivinationRecord;
   loading: boolean;
+  error?: string;
   onConsultAi: () => void;
 }) {
   return (
@@ -61,6 +71,14 @@ export function ResultScreen({
       </div>
 
       <div className="space-y-5 mb-10">
+        <div className="p-6 rounded-xl bg-[#171817]/[0.03] border border-[#171817]/10">
+          <h3 className="text-xl font-bold mb-3">初步解析（离线）</h3>
+          <p className="text-[#171817]/85 leading-relaxed mb-2">
+            {record.summary || '先稳住节奏，重视当下可控事项。'}
+          </p>
+          <p className="text-sm text-[#171817]/65 leading-relaxed">{movingHint(record)}</p>
+        </div>
+
         <div className="p-6 rounded-xl bg-white/50 border border-[#171817]/5">
           <h3 className="text-xl font-bold mb-3">离线卦辞</h3>
           <p className="text-[#171817]/80 leading-relaxed">{record.judgment}</p>
@@ -77,15 +95,18 @@ export function ResultScreen({
       </div>
 
       <div className="w-full flex justify-center pb-8">
-        <button
-          onClick={onConsultAi}
-          disabled={loading || !!record.aiText}
-          className="group relative px-10 py-5 rounded-full bg-[#171817] text-white font-bold text-lg shadow-xl hover:scale-105 transition-all flex items-center gap-3 disabled:opacity-50 disabled:hover:scale-100"
-        >
-          <Brain size={20} />
-          {loading ? '生成中...' : record.aiText ? '已完成解读' : '咨询 AI 大师姐'}
-          {!loading && !record.aiText && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
-        </button>
+        <div className="w-full flex flex-col items-center gap-3">
+          <button
+            onClick={onConsultAi}
+            disabled={loading || !!record.aiText}
+            className="group relative px-10 py-5 rounded-full bg-[#171817] text-white font-bold text-lg shadow-xl hover:scale-105 transition-all flex items-center gap-3 disabled:opacity-50 disabled:hover:scale-100"
+          >
+            <Brain size={20} />
+            {loading ? '生成中...' : record.aiText ? '已完成解读' : '咨询 AI 大师姐'}
+            {!loading && !record.aiText && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
+          </button>
+          {error && <p className="text-sm text-secondary text-center">{error}</p>}
+        </div>
       </div>
     </motion.div>
   );

@@ -15,6 +15,7 @@ const DB_PASSWORD = process.env.DB_PASSWORD || '';
 const DB_NAME = process.env.DB_NAME || 'xinyi';
 
 let pool;
+const DEFAULT_SENSITIVE_WORDS = ['政治', '寿命', '彩票', '开奖号码', '违法'];
 
 async function initDb() {
   const bootstrap = await mysql.createConnection({
@@ -73,6 +74,21 @@ async function initDb() {
       CONSTRAINT fk_divination_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sensitive_words (
+      id BIGINT PRIMARY KEY AUTO_INCREMENT,
+      word VARCHAR(64) NOT NULL UNIQUE,
+      updated_at DATETIME NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  const [rows] = await pool.query('SELECT COUNT(*) AS count FROM sensitive_words');
+  if (!rows[0].count) {
+    for (const word of DEFAULT_SENSITIVE_WORDS) {
+      await pool.query('INSERT INTO sensitive_words (word, updated_at) VALUES (?, ?)', [word, new Date()]);
+    }
+  }
 }
 
 app.use(express.json({ limit: '1mb' }));
@@ -135,6 +151,33 @@ async function requireAuth(req, res, next) {
 
 app.get('/api/health', (_, res) => {
   res.json({ ok: true });
+});
+
+app.get('/api/config/sensitive-words', async (_, res) => {
+  const [rows] = await pool.query('SELECT word FROM sensitive_words ORDER BY id ASC');
+  res.json({ words: rows.map((item) => item.word) });
+});
+
+app.post('/api/validate/question', async (req, res) => {
+  const question = String(req.body?.question || '');
+  if (!question.trim()) {
+    res.json({ blocked: false, hitWord: null });
+    return;
+  }
+
+  const [rows] = await pool.query(
+    `
+      SELECT word
+      FROM sensitive_words
+      WHERE ? LIKE CONCAT('%', word, '%')
+      ORDER BY CHAR_LENGTH(word) DESC
+      LIMIT 1
+    `,
+    [question],
+  );
+
+  const hitWord = rows[0]?.word || null;
+  res.json({ blocked: Boolean(hitWord), hitWord });
 });
 
 app.post('/api/auth/register', async (req, res) => {
@@ -255,25 +298,65 @@ app.post('/api/divinations', requireAuth, async (req, res) => {
 });
 
 app.post('/api/ai/interpret', async (req, res) => {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const apiKey = process.env.SILICONFLOW_API_KEY;
+  const apiBase = process.env.SILICONFLOW_BASE_URL || 'https://api.siliconflow.cn/v1';
+  const model = process.env.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V3';
   if (!apiKey) {
-    res.status(500).send('DEEPSEEK_API_KEY 未配置');
+    res.status(500).send('SILICONFLOW_API_KEY 未配置');
     return;
   }
 
-  const { question, category, hexagram, movingLines } = req.body || {};
+  const {
+    question,
+    category,
+    primaryHexagram,
+    changedHexagram,
+    movingLines,
+    judgment,
+    summary,
+    fortune,
+  } = req.body || {};
 
-  const prompt = `你是一位博学温婉的易经民俗顾问。请根据用户起的卦象：${hexagram}，动爻：${Array.isArray(movingLines) && movingLines.length ? movingLines.join('、') : '无'}，所求事项：${category} ${question || ''}。\n\n请严格按照以下三段输出：\n【当下现状】\n【姐姐建议】\n【避坑指南】\n\n要求：\n1. 语气柔和、理性，侧重心理疏导与国学智慧。\n2. 严禁恐吓、迷信绝对化预言、确定性吉凶断语。\n3. 总字数 250-400 字。`;
+  const fallbackText = `【当下现状】
+你当前更需要的不是“立刻得到标准答案”，而是先把问题拆成可执行的小步骤。此卦显示你已具备推进条件，但节奏上仍需稳住，不宜被外界噪音牵引。
+
+【姐姐建议】
+围绕“${category || '当前事项'}”先做一件最小可验证动作，并在 3-7 天内复盘结果。若“${question || '当前问题'}”涉及多人协作，先统一预期再行动，能显著降低内耗。
+
+【避坑指南】
+避免情绪化加码、避免一次性押注、避免把短期波动当成长期结论。先守住边界与节奏，再逐步放大投入。`;
+
+  const prompt = `你是一位博学温婉的易经民俗顾问。
+用户信息如下：
+- 所求事项：${category || '未填写'}
+- 具体问题：${question || '未填写'}
+- 本卦：${primaryHexagram || '未知'}
+- 变卦：${changedHexagram || '未知'}
+- 动爻：${Array.isArray(movingLines) && movingLines.length ? movingLines.join('、') : '无'}
+- 离线卦辞：${judgment || '无'}
+- 离线一句话大意：${summary || '无'}
+- 离线吉凶等级：${fortune || '无'}
+
+请你必须结合“用户具体问题 + 本卦/变卦/动爻”做针对性解读，避免空泛套话。
+请严格按照以下三段输出：
+【当下现状】
+【姐姐建议】
+【避坑指南】
+
+要求：
+1. 语气柔和、理性，侧重心理疏导与国学智慧。
+2. 严禁恐吓、迷信绝对化预言、确定性吉凶断语。
+3. 总字数 250-400 字。`;
 
   try {
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
+    const response = await fetch(`${apiBase}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
+        model,
         messages: [
           { role: 'system', content: '你是温婉理性的易经民俗顾问，强调心理支持与文化解读。' },
           { role: 'user', content: prompt },
@@ -285,7 +368,26 @@ app.post('/api/ai/interpret', async (req, res) => {
 
     if (!response.ok) {
       const text = await response.text();
-      res.status(response.status).send(text || 'DeepSeek API error');
+      let errorMessage = text;
+      let errorCode = '';
+      try {
+        const parsed = JSON.parse(text);
+        errorMessage = parsed?.error?.message || text;
+        errorCode = parsed?.error?.code || '';
+      } catch {
+        // Keep raw text.
+      }
+
+      const normalized = `${errorMessage} ${errorCode}`.toLowerCase();
+      if (
+        normalized.includes('insufficient balance') ||
+        normalized.includes('insufficient_balance') ||
+        normalized.includes('invalid_request_error')
+      ) {
+        res.json({ text: `${fallbackText}\n\n（提示：当前 AI 服务余额不足，已自动切换离线解读。）` });
+        return;
+      }
+      res.status(response.status).send(errorMessage || text || 'SiliconFlow API error');
       return;
     }
 
@@ -293,7 +395,7 @@ app.post('/api/ai/interpret', async (req, res) => {
     const text = data?.choices?.[0]?.message?.content || '当前网络繁忙，请稍后再试。';
     res.json({ text });
   } catch (error) {
-    console.error('DeepSeek error', error);
+    console.error('SiliconFlow error', error);
     res.status(500).send('AI 服务调用失败');
   }
 });

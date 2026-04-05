@@ -3,13 +3,18 @@ import type { AuthResponse, DivinationRecord, User } from '../types';
 const API_BASE = '/api';
 
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${url}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${url}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+  } catch {
+    throw new Error('后端服务不可达，请确认 3001 端口服务已启动。');
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -62,10 +67,21 @@ export function saveUserRecord(token: string, record: DivinationRecord) {
 export function getAiInterpretation(payload: {
   question: string;
   category: string;
-  hexagram: string;
+  primaryHexagram: string;
+  changedHexagram: string;
+  judgment?: string;
+  summary?: string;
+  fortune?: string;
   movingLines: number[];
 }) {
   return request<{ text: string }>('/ai/interpret', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function validateQuestion(payload: { question: string }) {
+  return request<{ blocked: boolean; hitWord: string | null }>('/validate/question', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

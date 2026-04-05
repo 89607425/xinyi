@@ -7,14 +7,14 @@
 - 组件拆分：`App.tsx` 仅保留状态编排，页面与布局拆到 `src/components/`
 - 真实六爻起卦：6 爻随机（少阴/少阳/老阴/老阳）并映射本地 64 卦数据
 - 本地持久化：游客历史记录保存到 `localStorage`
-- 后端代理：Node.js/Express 代理 DeepSeek，前端不再暴露 API Key
+- 后端代理：Node.js/Express 代理 SiliconFlow，前端不再暴露 API Key
 - 用户系统：注册/登录，历史记录绑定账号
 - PRD 对齐增强：敏感词过滤、按分类 24 小时限频、AI 三段式输出
 
 ## 技术栈
 
 - Frontend: React 19 + TypeScript + Vite + Tailwind CSS + Motion
-- Backend: Node.js + Express + MySQL + DeepSeek API
+- Backend: Node.js + Express + MySQL + SiliconFlow API
 
 ## 目录结构
 
@@ -38,7 +38,9 @@ xinyi/
 `.env.local` 示例：
 
 ```env
-DEEPSEEK_API_KEY=your_deepseek_key
+SILICONFLOW_API_KEY=your_siliconflow_key
+SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
+SILICONFLOW_MODEL=deepseek-ai/DeepSeek-V3
 APP_URL=http://localhost:3000
 
 DB_HOST=127.0.0.1
