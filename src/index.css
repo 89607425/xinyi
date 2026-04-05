@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Noto Serif SC", serif;
+  --color-secondary: #b52619;
+}
+
+@layer base {
+  body {
+    @apply bg-[#fcf9f2] text-[#171817] font-serif antialiased;
+    background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+  }
+}
+
+@layer utilities {
+  .vertical-text {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+  
+  .ink-bleed {
+    background-image: radial-gradient(circle at center, rgba(23, 24, 23, 0.03) 0%, transparent 70%);
+  }
+
+  .ink-fade {
+    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  }
+}
