@@ -1,18 +1,24 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import dotenv from 'dotenv';
 import express from 'express';
 import mysql from 'mysql2/promise';
+import { fileURLToPath } from 'node:url';
 
 dotenv.config({ path: '.env.local' });
 
 const app = express();
-const PORT = Number(process.env.API_PORT || 3001);
+const PORT = Number(process.env.PORT || process.env.API_PORT || 3001);
 
-const DB_HOST = process.env.DB_HOST || '127.0.0.1';
-const DB_PORT = Number(process.env.DB_PORT || 3306);
-const DB_USER = process.env.DB_USER || 'root';
-const DB_PASSWORD = process.env.DB_PASSWORD || '';
-const DB_NAME = process.env.DB_NAME || 'xinyi';
+const DB_HOST = process.env.DB_HOST || process.env.MYSQLHOST || '127.0.0.1';
+const DB_PORT = Number(process.env.DB_PORT || process.env.MYSQLPORT || 3306);
+const DB_USER = process.env.DB_USER || process.env.MYSQLUSER || 'root';
+const DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '';
+const DB_NAME = process.env.DB_NAME || process.env.MYSQLDATABASE || 'xinyi';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DIST_DIR = path.resolve(__dirname, '../dist');
 
 let pool;
 const DEFAULT_SENSITIVE_WORDS = ['政治', '寿命', '彩票', '开奖号码', '违法'];
@@ -26,10 +32,15 @@ async function initDb() {
     multipleStatements: true,
   });
 
-  await bootstrap.query(`
-    CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-  `);
-  await bootstrap.end();
+  try {
+    await bootstrap.query(`
+      CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+  } catch (error) {
+    console.warn('Skip CREATE DATABASE (insufficient permission or managed instance):', error?.message || error);
+  } finally {
+    await bootstrap.end();
+  }
 
   pool = mysql.createPool({
     host: DB_HOST,
@@ -93,7 +104,8 @@ async function initDb() {
 
 app.use(express.json({ limit: '1mb' }));
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', process.env.APP_URL || 'http://localhost:3000');
+  const allowOrigin = process.env.APP_URL || req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', allowOrigin);
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') {
@@ -399,6 +411,13 @@ app.post('/api/ai/interpret', async (req, res) => {
     res.status(500).send('AI 服务调用失败');
   }
 });
+
+if (fs.existsSync(DIST_DIR)) {
+  app.use(express.static(DIST_DIR));
+  app.get(/^\/(?!api).*/, (_, res) => {
+    res.sendFile(path.join(DIST_DIR, 'index.html'));
+  });
+}
 
 async function start() {
   try {

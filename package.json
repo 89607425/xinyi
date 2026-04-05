@@ -10,7 +10,8 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "dev:server": "node server/index.js",
-    "dev:all": "concurrently -k -n API,WEB -c cyan,green \"npm run dev:server\" \"npm run dev\""
+    "dev:all": "concurrently -k -n API,WEB -c cyan,green \"npm run dev:server\" \"npm run dev\"",
+    "start": "node server/index.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
