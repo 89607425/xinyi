@@ -11,11 +11,27 @@ dotenv.config({ path: '.env.local' });
 const app = express();
 const PORT = Number(process.env.PORT || process.env.API_PORT || 3001);
 
-const DB_HOST = process.env.DB_HOST || process.env.MYSQLHOST || '127.0.0.1';
-const DB_PORT = Number(process.env.DB_PORT || process.env.MYSQLPORT || 3306);
-const DB_USER = process.env.DB_USER || process.env.MYSQLUSER || 'root';
-const DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '';
-const DB_NAME = process.env.DB_NAME || process.env.MYSQLDATABASE || 'xinyi';
+const DB_URL = process.env.MYSQL_URL || process.env.DATABASE_URL || '';
+let DB_HOST = '';
+let DB_PORT = 3306;
+let DB_USER = '';
+let DB_PASSWORD = '';
+let DB_NAME = '';
+
+if (DB_URL) {
+  const url = new URL(DB_URL);
+  DB_HOST = url.hostname;
+  DB_PORT = Number(url.port || 3306);
+  DB_USER = decodeURIComponent(url.username);
+  DB_PASSWORD = decodeURIComponent(url.password);
+  DB_NAME = decodeURIComponent(url.pathname.replace(/^\//, ''));
+} else {
+  DB_HOST = process.env.DB_HOST || process.env.MYSQLHOST || '';
+  DB_PORT = Number(process.env.DB_PORT || process.env.MYSQLPORT || 3306);
+  DB_USER = process.env.DB_USER || process.env.MYSQLUSER || '';
+  DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '';
+  DB_NAME = process.env.DB_NAME || process.env.MYSQLDATABASE || '';
+}
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DIST_DIR = path.resolve(__dirname, '../dist');
@@ -421,8 +437,10 @@ if (fs.existsSync(DIST_DIR)) {
 
 async function start() {
   try {
-    if (!DB_PASSWORD) {
-      throw new Error('DB_PASSWORD 未配置');
+    if (!DB_HOST || !DB_USER || !DB_PASSWORD || !DB_NAME) {
+      throw new Error(
+        'MySQL 配置不完整。请在 Railway 设置 MYSQL_URL（或 DATABASE_URL），或提供 MYSQLHOST/MYSQLPORT/MYSQLUSER/MYSQLPASSWORD/MYSQLDATABASE。',
+      );
     }
     await initDb();
     app.listen(PORT, () => {
