@@ -1,20 +1,64 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 心易 · XinYi
 
-# Run and deploy your AI Studio app
+民俗文化 + 心理疏导导向的电子六爻应用（Web 端原型）。
 
-This contains everything you need to run your app locally.
+## 已完成能力
 
-View your app in AI Studio: https://ai.studio/apps/873b666c-5f16-4bc1-a11e-1dcf9e3797c8
+- 组件拆分：`App.tsx` 仅保留状态编排，页面与布局拆到 `src/components/`
+- 真实六爻起卦：6 爻随机（少阴/少阳/老阴/老阳）并映射本地 64 卦数据
+- 本地持久化：游客历史记录保存到 `localStorage`
+- 后端代理：Node.js/Express 代理 DeepSeek，前端不再暴露 API Key
+- 用户系统：注册/登录，历史记录绑定账号
+- PRD 对齐增强：敏感词过滤、按分类 24 小时限频、AI 三段式输出
 
-## Run Locally
+## 技术栈
 
-**Prerequisites:**  Node.js
+- Frontend: React 19 + TypeScript + Vite + Tailwind CSS + Motion
+- Backend: Node.js + Express + MySQL + DeepSeek API
 
+## 目录结构
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```txt
+xinyi/
+├── server/
+│   └── index.js
+├── src/
+│   ├── components/
+│   │   ├── layout/
+│   │   └── screens/
+│   ├── data/
+│   ├── services/
+│   ├── types/
+│   └── App.tsx
+└── .env.local
+```
+
+## 环境变量
+
+`.env.local` 示例：
+
+```env
+DEEPSEEK_API_KEY=your_deepseek_key
+APP_URL=http://localhost:3000
+
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_mysql_password
+DB_NAME=xinyi
+```
+
+## 运行方式
+
+```bash
+# 1) 安装依赖
+npm install
+
+# 2) 启动后端（3001）
+npm run dev:server
+
+# 3) 新开终端启动前端（3000）
+npm run dev
+```
+
+前端通过 Vite 代理访问 `/api/*`。
