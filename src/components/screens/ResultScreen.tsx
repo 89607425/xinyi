@@ -41,11 +41,13 @@ export function ResultScreen({
   loading,
   error,
   onConsultAi,
+  onBackToStart,
 }: {
   record: DivinationRecord;
   loading: boolean;
   error?: string;
   onConsultAi: () => void;
+  onBackToStart: () => void;
 }) {
   return (
     <motion.div
@@ -104,6 +106,12 @@ export function ResultScreen({
             <Brain size={20} />
             {loading ? '生成中...' : record.aiText ? '已完成解读' : '咨询 AI 大师姐'}
             {!loading && !record.aiText && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
+          </button>
+          <button
+            onClick={onBackToStart}
+            className="px-6 py-2 border border-[#171817]/20 text-[#171817]/70 hover:border-secondary hover:text-secondary transition-colors"
+          >
+            返回起卦（清空本次会话）
           </button>
           {error && <p className="text-sm text-secondary text-center">{error}</p>}
         </div>

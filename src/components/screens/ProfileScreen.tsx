@@ -1,7 +1,66 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { ChevronRight } from 'lucide-react';
-import type { User } from '../../types';
+import { HEXAGRAMS_BY_BINARY } from '../../data/hexagrams';
+import type { HexagramData, User } from '../../types';
+
+function HexagramImage({ lines }: { lines: number[] }) {
+  return (
+    <div className="w-full flex flex-col-reverse gap-1">
+      {lines.map((line, idx) => (
+        <div key={idx}>
+          {line === 1 ? (
+            <div className="h-1.5 w-full bg-[#171817] rounded-sm" />
+          ) : (
+            <div className="flex gap-1 w-full">
+              <div className="h-1.5 flex-1 bg-[#171817] rounded-sm" />
+              <div className="h-1.5 flex-1 bg-[#171817] rounded-sm" />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HexagramGrid() {
+  const [hovered, setHovered] = useState<{ hex: HexagramData; x: number; y: number } | null>(null);
+
+  return (
+    <div className="relative">
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-2 md:gap-3">
+        {HEXAGRAMS_BY_BINARY.map((hex) => (
+          <button
+            key={hex.number}
+            className="group bg-white/70 border border-[#171817]/10 rounded-lg p-2 hover:border-secondary transition-colors"
+            onMouseEnter={(e) => setHovered({ hex, x: e.clientX, y: e.clientY })}
+            onMouseMove={(e) => setHovered({ hex, x: e.clientX, y: e.clientY })}
+            onMouseLeave={() => setHovered(null)}
+            onFocus={(e) => setHovered({ hex, x: e.currentTarget.getBoundingClientRect().left + 20, y: e.currentTarget.getBoundingClientRect().top + 20 })}
+            onBlur={() => setHovered(null)}
+            aria-label={`第${hex.number}卦 ${hex.name}`}
+          >
+            <div className="text-[10px] text-[#171817]/50 mb-1">{hex.number}</div>
+            <HexagramImage lines={hex.lines} />
+          </button>
+        ))}
+      </div>
+
+      {hovered && (
+        <div
+          className="fixed z-[210] w-[300px] pointer-events-none rounded-xl border border-[#171817]/20 bg-[#fcf9f2]/95 backdrop-blur-sm p-4 shadow-2xl"
+          style={{ left: hovered.x + 14, top: hovered.y + 14 }}
+        >
+          <h3 className="text-lg font-bold text-secondary mb-1">
+            第 {hovered.hex.number} 卦 · {hovered.hex.name}
+          </h3>
+          <p className="text-xs text-[#171817]/60 mb-2">吉凶等级：{hovered.hex.fortune}</p>
+          <p className="text-sm text-[#171817]/80 leading-relaxed mb-2">{hovered.hex.judgment}</p>
+          <p className="text-xs text-[#171817]/65 leading-relaxed">{hovered.hex.summary}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ProfileScreen({
   user,
@@ -96,37 +155,22 @@ export function ProfileScreen({
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full pt-32 pb-40 px-6 max-w-2xl mx-auto w-full">
-      <section className="flex flex-col items-center mb-16">
-        <div className="relative mb-8">
-          <div className="w-32 h-32 border-4 border-secondary flex items-center justify-center relative bg-white/50">
-            <div className="absolute inset-1 border border-secondary/30" />
-            <span className="text-3xl font-bold text-secondary">{user.displayName.slice(0, 2)}</span>
-          </div>
-        </div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full pt-32 pb-40 px-6 max-w-6xl mx-auto w-full">
+      <section className="flex flex-col items-center mb-8">
         <h2 className="text-2xl font-bold tracking-widest mb-1">{user.displayName}</h2>
         <p className="text-[#171817]/60 text-sm tracking-[0.2em]">@{user.username}</p>
       </section>
 
-      <nav className="space-y-8">
-        {[
-          { label: '历史记录与账号绑定', sub: 'HISTORY' },
-          { label: '离线数据库 64 卦', sub: 'OFFLINE' },
-          { label: '心理疏导模式', sub: 'MODE' },
-        ].map((item) => (
-          <div key={item.label} className="group cursor-pointer flex justify-between items-end pb-4 border-b border-[#171817]/5 hover:border-secondary/30 transition-all duration-700">
-            <div className="flex flex-col">
-              <span className="text-xs text-[#171817]/40 tracking-[0.3em] mb-1">{item.sub}</span>
-              <span className="text-xl tracking-widest group-hover:text-secondary transition-colors">{item.label}</span>
-            </div>
-            <ChevronRight size={20} className="text-[#171817]/20 group-hover:text-secondary group-hover:translate-x-1 transition-all" />
-          </div>
-        ))}
-      </nav>
+      <div className="text-center mb-8">
+        <button onClick={onLogout} className="px-5 py-2 border border-[#171817]/20 hover:border-secondary hover:text-secondary transition-colors">
+          退出登录
+        </button>
+      </div>
 
-      <button onClick={onLogout} className="mt-12 px-5 py-2 border border-[#171817]/20 hover:border-secondary hover:text-secondary transition-colors">
-        退出登录
-      </button>
+      <section>
+        <h3 className="text-lg font-semibold mb-4 text-center">六十四卦矩阵</h3>
+        <HexagramGrid />
+      </section>
     </motion.div>
   );
 }

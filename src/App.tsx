@@ -80,11 +80,6 @@ export default function App() {
 
   const latestRecord = useMemo(() => currentRecord ?? history[0] ?? null, [currentRecord, history]);
 
-  const persistGuest = (records: DivinationRecord[]) => {
-    setHistory(records);
-    saveGuestHistory(records);
-  };
-
   const syncGuestToUser = async (nextToken: string, userId: string) => {
     const guestRecords = getGuestHistory();
     for (const item of guestRecords) {
@@ -139,8 +134,11 @@ export default function App() {
       setHistory((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
       setCurrentRecord(saved);
     } else {
-      const next = [record, ...history];
-      persistGuest(next);
+      setHistory((prev) => {
+        const next = [record, ...prev.filter((item) => item.id !== record.id)];
+        saveGuestHistory(next);
+        return next;
+      });
     }
 
     setScreen('result');
@@ -170,8 +168,11 @@ export default function App() {
       if (token) {
         await saveUserRecord(token, updated);
       } else {
-        const next = history.map((item) => (item.id === updated.id ? updated : item));
-        persistGuest(next);
+        setHistory((prev) => {
+          const next = prev.map((item) => (item.id === updated.id ? updated : item));
+          saveGuestHistory(next);
+          return next;
+        });
       }
     } catch (error) {
       setAiError(error instanceof Error ? error.message : 'AI 解读失败，请稍后再试。');
@@ -206,6 +207,12 @@ export default function App() {
     setCurrentRecord(null);
   };
 
+  const handleBackToStartAndClearResult = () => {
+    setCurrentRecord(null);
+    setAiError('');
+    setScreen('start');
+  };
+
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden">
       <TopAppBar />
@@ -215,6 +222,7 @@ export default function App() {
           {screen === 'start' && (
             <StartScreen
               onStart={() => setScreen('input')}
+              onResumeResult={currentRecord ? () => setScreen('result') : undefined}
               onOpenDaily={() => {
                 setDailyHexagram(getTodayDailyHexagram());
                 setScreen('daily');
@@ -241,10 +249,20 @@ export default function App() {
               loading={aiLoading}
               error={aiError}
               onConsultAi={() => void handleConsultAi()}
+              onBackToStart={handleBackToStartAndClearResult}
             />
           )}
 
-          {screen === 'history' && <HistoryScreen history={history} />}
+          {screen === 'history' && (
+            <HistoryScreen
+              history={history}
+              onSelect={(record) => {
+                setCurrentRecord(record);
+                setAiError('');
+                setScreen('result');
+              }}
+            />
+          )}
 
           {screen === 'profile' && (
             <ProfileScreen

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { castLineByThreeCoins } from '../../services/divination';
 
@@ -22,6 +22,7 @@ export function CastingScreen({ onFinish }: { onFinish: (lines: number[]) => voi
   const [lines, setLines] = useState<number[]>([]);
   const [lastCoins, setLastCoins] = useState<number[] | null>(null);
   const [casting, setCasting] = useState(false);
+  const doneRef = useRef(false);
 
   const progress = lines.length;
   const previewLines = useMemo(() => [...lines].reverse(), [lines]);
@@ -34,16 +35,19 @@ export function CastingScreen({ onFinish }: { onFinish: (lines: number[]) => voi
     setLastCoins(result.coins);
 
     setTimeout(() => {
-      setLines((prev) => {
-        const next = [...prev, result.line];
-        if (next.length === 6) {
-          setTimeout(() => onFinish(next), 350);
-        }
-        return next;
-      });
+      setLines((prev) => [...prev, result.line]);
       setCasting(false);
     }, 250);
   };
+
+  useEffect(() => {
+    if (lines.length === 6 && !doneRef.current) {
+      doneRef.current = true;
+      const timer = setTimeout(() => onFinish(lines), 350);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [lines, onFinish]);
 
   return (
     <motion.div

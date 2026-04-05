@@ -1,7 +1,15 @@
 import { motion } from 'motion/react';
 import { Sparkles } from 'lucide-react';
 
-export function StartScreen({ onStart, onOpenDaily }: { onStart: () => void; onOpenDaily: () => void }) {
+export function StartScreen({
+  onStart,
+  onOpenDaily,
+  onResumeResult,
+}: {
+  onStart: () => void;
+  onOpenDaily: () => void;
+  onResumeResult?: () => void;
+}) {
   return (
     <motion.div
       key="start"
@@ -25,7 +33,7 @@ export function StartScreen({ onStart, onOpenDaily }: { onStart: () => void; onO
         >
           <div className="absolute inset-0 bg-white/30 rounded-full scale-110 opacity-30 group-hover:opacity-60 transition-opacity" />
           <div className="absolute inset-0 border border-[#171817]/10 rounded-full scale-125" />
-          <span className="text-7xl md:text-9xl font-black tracking-[1.5rem] text-[#171817] group-hover:text-secondary transition-colors">
+          <span className="ink-title text-7xl md:text-9xl font-black tracking-[1.5rem] text-[#171817] group-hover:text-secondary transition-colors">
             起卦
           </span>
           <div className="absolute -right-8 top-1/2 -translate-y-1/2 bg-secondary w-6 h-6 flex items-center justify-center">
@@ -46,6 +54,14 @@ export function StartScreen({ onStart, onOpenDaily }: { onStart: () => void; onO
           >
             进入每日一卦
           </button>
+          {onResumeResult && (
+            <button
+              onClick={onResumeResult}
+              className="mt-2 px-6 py-2 border border-secondary/40 text-secondary hover:bg-secondary/10 transition-colors text-sm tracking-widest"
+            >
+              继续查看上次卦象
+            </button>
+          )}
         </div>
       </div>
     </motion.div>

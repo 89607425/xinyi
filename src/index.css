@@ -25,4 +25,10 @@
   .ink-fade {
     mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
   }
+
+  .ink-title {
+    font-family: "STKaiti", "KaiTi", "Kaiti SC", "Songti SC", serif;
+    text-shadow: 0 1px 0 rgba(23, 24, 23, 0.2), 0 8px 20px rgba(23, 24, 23, 0.15);
+    transform: skewX(-2deg);
+  }
 }

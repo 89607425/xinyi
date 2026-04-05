@@ -2,7 +2,13 @@ import { motion } from 'motion/react';
 import { BookOpen, ChevronRight } from 'lucide-react';
 import type { DivinationRecord } from '../../types';
 
-export function HistoryScreen({ history }: { history: DivinationRecord[] }) {
+export function HistoryScreen({
+  history,
+  onSelect,
+}: {
+  history: DivinationRecord[];
+  onSelect?: (record: DivinationRecord) => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -21,7 +27,11 @@ export function HistoryScreen({ history }: { history: DivinationRecord[] }) {
         {history.map((record, idx) => (
           <div key={record.id} className="relative pl-14 pb-12 group">
             <div className={`absolute left-[21px] top-2 w-2 h-2 transform rotate-45 ${idx === 0 ? 'bg-secondary' : 'bg-[#171817]/20'}`} />
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between space-y-4 md:space-y-0 hover:bg-white/40 transition-colors duration-500 p-4 -ml-4 rounded-lg">
+            <button
+              type="button"
+              onClick={() => onSelect?.(record)}
+              className="w-full text-left flex flex-col md:flex-row md:items-start md:justify-between space-y-4 md:space-y-0 hover:bg-white/40 transition-colors duration-500 p-4 -ml-4 rounded-lg"
+            >
               <div className="flex-1">
                 <div className="flex items-center gap-4 mb-2">
                   <span className="text-secondary font-bold tracking-widest">{record.category}</span>
@@ -36,7 +46,7 @@ export function HistoryScreen({ history }: { history: DivinationRecord[] }) {
                 </div>
                 <ChevronRight size={20} className="text-[#171817]/20 group-hover:text-secondary transition-colors" />
               </div>
-            </div>
+            </button>
           </div>
         ))}
       </div>
