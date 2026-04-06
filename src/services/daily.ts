@@ -1,4 +1,4 @@
-import { HEXAGRAMS_BY_BINARY } from '../data/hexagrams';
+import { HEXAGRAMS_BY_NUMBER } from '../data/hexagrams';
 import type { HexagramData } from '../types';
 
 const KEY = 'xinyi_daily_hexagram_v1';
@@ -32,7 +32,7 @@ export function getTodayDailyHexagram(): HexagramData {
     const number = queue.shift() || 1;
     state = { date, number, queue };
     localStorage.setItem(KEY, JSON.stringify(state));
-    return HEXAGRAMS_BY_BINARY[number - 1];
+    return HEXAGRAMS_BY_NUMBER[number - 1];
   }
 
   if (state.date !== date) {
@@ -44,5 +44,5 @@ export function getTodayDailyHexagram(): HexagramData {
     localStorage.setItem(KEY, JSON.stringify(state));
   }
 
-  return HEXAGRAMS_BY_BINARY[state.number - 1];
+  return HEXAGRAMS_BY_NUMBER[state.number - 1];
 }

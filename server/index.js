@@ -343,6 +343,9 @@ app.post('/api/ai/interpret', async (req, res) => {
     judgment,
     summary,
     fortune,
+    changedJudgment,
+    changedSummary,
+    changedFortune,
   } = req.body || {};
 
   const fallbackText = `【当下现状】
@@ -364,8 +367,12 @@ app.post('/api/ai/interpret', async (req, res) => {
 - 离线卦辞：${judgment || '无'}
 - 离线一句话大意：${summary || '无'}
 - 离线吉凶等级：${fortune || '无'}
+- 变卦卦辞：${changedJudgment || '无'}
+- 变卦一句话大意：${changedSummary || '无'}
+- 变卦吉凶等级：${changedFortune || '无'}
 
 请你必须结合“用户具体问题 + 本卦/变卦/动爻”做针对性解读，避免空泛套话。
+如果有动爻，请把“本卦”视为现状，把“变卦”视为发展后的主趋势。
 请严格按照以下三段输出：
 【当下现状】
 【姐姐建议】

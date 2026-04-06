@@ -27,11 +27,12 @@ function HexagramGrid() {
 
   return (
     <div className="relative">
-      <div className="grid grid-cols-4 md:grid-cols-8 gap-2 md:gap-3">
+      <div className="grid grid-cols-4 md:grid-cols-8 gap-3 md:gap-4">
         {HEXAGRAMS_BY_BINARY.map((hex) => (
-          <button
+          <motion.button
             key={hex.number}
-            className="group bg-white/70 border border-[#171817]/10 rounded-lg p-2 hover:border-secondary transition-colors"
+            whileHover={{ scale: 1.08 }}
+            className="group bg-white/70 border-2 border-[#171817]/15 rounded-lg p-3 hover:border-[#52B788] hover:bg-[#D8F3DC]/30 transition-all shadow-sm hover:shadow-md"
             onMouseEnter={(e) => setHovered({ hex, x: e.clientX, y: e.clientY })}
             onMouseMove={(e) => setHovered({ hex, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setHovered(null)}
@@ -39,24 +40,26 @@ function HexagramGrid() {
             onBlur={() => setHovered(null)}
             aria-label={`第${hex.number}卦 ${hex.name}`}
           >
-            <div className="text-[10px] text-[#171817]/50 mb-1">{hex.number}</div>
+            <div className="text-[10px] text-[#171817]/50 mb-2 font-bold tracking-wider">{hex.number}</div>
             <HexagramImage lines={hex.lines} />
-          </button>
+          </motion.button>
         ))}
       </div>
 
       {hovered && (
-        <div
-          className="fixed z-[210] w-[300px] pointer-events-none rounded-xl border border-[#171817]/20 bg-[#fcf9f2]/95 backdrop-blur-sm p-4 shadow-2xl"
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="fixed z-[210] w-[320px] pointer-events-none rounded-xl border-2 border-[#52B788]/30 bg-[#fcf9f2]/98 backdrop-blur-sm p-5 shadow-2xl"
           style={{ left: hovered.x + 14, top: hovered.y + 14 }}
         >
-          <h3 className="text-lg font-bold text-secondary mb-1">
+          <h3 className="text-lg font-bold text-[#171817] mb-2">
             第 {hovered.hex.number} 卦 · {hovered.hex.name}
           </h3>
-          <p className="text-xs text-[#171817]/60 mb-2">吉凶等级：{hovered.hex.fortune}</p>
-          <p className="text-sm text-[#171817]/80 leading-relaxed mb-2">{hovered.hex.judgment}</p>
+          <p className="text-xs text-[#52B788] mb-3 font-medium tracking-wider">吉凶等级：{hovered.hex.fortune}</p>
+          <p className="text-sm text-[#171817]/80 leading-relaxed mb-2 italic">{hovered.hex.judgment}</p>
           <p className="text-xs text-[#171817]/65 leading-relaxed">{hovered.hex.summary}</p>
-        </div>
+        </motion.div>
       )}
     </div>
   );
@@ -100,18 +103,21 @@ export function ProfileScreen({
   if (!user) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full pt-32 pb-40 px-6 max-w-md mx-auto w-full">
-        <h2 className="text-3xl font-bold mb-8">账号系统</h2>
+        <div className="mb-10 text-center">
+          <h2 className="ink-title text-5xl font-black text-[#171817] mb-2">账号系统</h2>
+          <p className="text-[#171817]/50 text-sm tracking-[0.2em]">登录或注册以保存占卜记录</p>
+        </div>
 
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-1 mb-8 bg-[#D8F3DC]/30 rounded-lg p-1">
           <button
             onClick={() => setMode('login')}
-            className={`px-4 py-2 border ${mode === 'login' ? 'border-secondary text-secondary' : 'border-[#171817]/20 text-[#171817]/50'}`}
+            className={`flex-1 px-4 py-2.5 rounded-md font-medium transition-all ${mode === 'login' ? 'bg-[#52B788] text-white shadow-md' : 'text-[#171817]/60 hover:text-[#171817]'}`}
           >
             登录
           </button>
           <button
             onClick={() => setMode('register')}
-            className={`px-4 py-2 border ${mode === 'register' ? 'border-secondary text-secondary' : 'border-[#171817]/20 text-[#171817]/50'}`}
+            className={`flex-1 px-4 py-2.5 rounded-md font-medium transition-all ${mode === 'register' ? 'bg-[#52B788] text-white shadow-md' : 'text-[#171817]/60 hover:text-[#171817]'}`}
           >
             注册
           </button>
@@ -122,14 +128,14 @@ export function ProfileScreen({
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="用户名"
-            className="w-full border border-[#171817]/10 bg-white/60 px-4 py-3"
+            className="w-full border-2 border-[#171817]/15 bg-white/70 rounded-lg px-4 py-3 focus:border-[#52B788] focus:outline-none transition-colors focus:bg-white"
           />
           {mode === 'register' && (
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="昵称（可选）"
-              className="w-full border border-[#171817]/10 bg-white/60 px-4 py-3"
+              className="w-full border-2 border-[#171817]/15 bg-white/70 rounded-lg px-4 py-3 focus:border-[#52B788] focus:outline-none transition-colors focus:bg-white"
             />
           )}
           <input
@@ -137,38 +143,45 @@ export function ProfileScreen({
             onChange={(e) => setPassword(e.target.value)}
             placeholder="密码"
             type="password"
-            className="w-full border border-[#171817]/10 bg-white/60 px-4 py-3"
+            className="w-full border-2 border-[#171817]/15 bg-white/70 rounded-lg px-4 py-3 focus:border-[#52B788] focus:outline-none transition-colors focus:bg-white"
           />
         </div>
 
-        {error && <p className="mt-3 text-sm text-secondary">{error}</p>}
+        {error && <p className="mt-4 text-sm text-[#52B788] font-medium text-center">{error}</p>}
 
-        <button
+        <motion.button
           onClick={submit}
           disabled={submitting || !username || !password}
-          className="mt-8 w-full bg-[#171817] text-white py-3 disabled:opacity-50"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="mt-8 w-full bg-[#52B788] text-white py-3.5 font-bold tracking-wider rounded-lg disabled:opacity-50 hover:bg-[#40916C] transition-all shadow-md hover:shadow-lg"
         >
           {submitting ? '提交中...' : mode === 'login' ? '登录' : '注册'}
-        </button>
+        </motion.button>
       </motion.div>
     );
   }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full pt-32 pb-40 px-6 max-w-6xl mx-auto w-full">
-      <section className="flex flex-col items-center mb-8">
-        <h2 className="text-2xl font-bold tracking-widest mb-1">{user.displayName}</h2>
-        <p className="text-[#171817]/60 text-sm tracking-[0.2em]">@{user.username}</p>
+      <section className="flex flex-col items-center mb-12 relative">
+        <div className="leaf-decoration leaf-top-right" />
+        <h2 className="ink-title text-4xl font-black text-[#171817] mb-2 tracking-tighter">{user.displayName}</h2>
+        <p className="text-[#171817]/60 text-sm tracking-[0.3em]">@{user.username}</p>
       </section>
 
-      <div className="text-center mb-8">
-        <button onClick={onLogout} className="px-5 py-2 border border-[#171817]/20 hover:border-secondary hover:text-secondary transition-colors">
+      <div className="text-center mb-10">
+        <motion.button 
+          whileHover={{ scale: 1.05 }}
+          onClick={onLogout} 
+          className="px-8 py-3 border-2 border-[#171817]/20 hover:border-[#52B788] text-[#171817]/70 hover:text-[#52B788] hover:bg-[#D8F3DC]/30 transition-all rounded-lg font-medium"
+        >
           退出登录
-        </button>
+        </motion.button>
       </div>
 
       <section>
-        <h3 className="text-lg font-semibold mb-4 text-center">六十四卦矩阵</h3>
+        <h3 className="text-lg font-bold mb-6 text-center text-[#171817] tracking-widest">六十四卦矩阵</h3>
         <HexagramGrid />
       </section>
     </motion.div>

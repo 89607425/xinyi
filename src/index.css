@@ -8,7 +8,6 @@
 @layer base {
   body {
     @apply bg-[#fcf9f2] text-[#171817] font-serif antialiased;
-    background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
   }
 }
 
@@ -29,6 +28,80 @@
   .ink-title {
     font-family: "STKaiti", "KaiTi", "Kaiti SC", "Songti SC", serif;
     text-shadow: 0 1px 0 rgba(23, 24, 23, 0.2), 0 8px 20px rgba(23, 24, 23, 0.15);
-    transform: skewX(-2deg);
+  }
+
+  .spring-leaf {
+    position: relative;
+    display: inline-block;
+  }
+
+  .leaf-decoration::before {
+    content: '🍃';
+    position: absolute;
+    opacity: 0.4;
+  }
+
+  .leaf-top-left::before {
+    top: -12px;
+    left: -8px;
+    font-size: 20px;
+    animation: sway 4s ease-in-out infinite;
+  }
+
+  .leaf-top-right::before {
+    top: -10px;
+    right: -6px;
+    font-size: 18px;
+    animation: sway 3.5s ease-in-out infinite reverse;
+  }
+
+  .leaf-bottom-left::before {
+    bottom: -8px;
+    left: -10px;
+    font-size: 16px;
+    animation: sway 3.8s ease-in-out infinite;
+  }
+
+  .leaf-bottom-right::before {
+    bottom: -10px;
+    right: -8px;
+    font-size: 18px;
+    animation: sway 4.2s ease-in-out infinite reverse;
+  }
+
+  @keyframes sway {
+    0%, 100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    25% {
+      transform: translateY(-3px) rotate(-5deg);
+    }
+    50% {
+      transform: translateY(-6px) rotate(5deg);
+    }
+    75% {
+      transform: translateY(-3px) rotate(-5deg);
+    }
+  }
+
+  .spring-green {
+    color: #52B788;
+  }
+
+  .spring-accent {
+    border-color: #52B788;
+  }
+
+  .spring-bg-light {
+    background-color: rgba(82, 183, 136, 0.05);
+  }
+
+  .spring-hover {
+    transition: all 0.3s ease;
+  }
+
+  .spring-hover:hover {
+    border-color: #52B788;
+    background-color: rgba(82, 183, 136, 0.08);
   }
 }

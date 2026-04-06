@@ -72,6 +72,9 @@ export function getAiInterpretation(payload: {
   judgment?: string;
   summary?: string;
   fortune?: string;
+  changedJudgment?: string;
+  changedSummary?: string;
+  changedFortune?: string;
   movingLines: number[];
 }) {
   return request<{ text: string }>('/ai/interpret', {

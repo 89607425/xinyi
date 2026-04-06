@@ -33,31 +33,34 @@ export function InputScreen({
       exit={{ opacity: 0, y: -20 }}
       className="h-full flex flex-col items-center justify-center pt-32 pb-40 px-6 max-w-4xl mx-auto w-full"
     >
-      <h2 className="text-4xl md:text-5xl font-bold tracking-[0.3em] mb-16 text-center">选择事项并描述问题</h2>
+      <h2 className="ink-title text-5xl md:text-6xl font-black tracking-[0.3em] mb-20 text-center text-[#171817]">选择事项 描述问题</h2>
 
-      <div className="grid grid-cols-5 gap-4 md:gap-8 w-full mb-10">
+      <div className="grid grid-cols-5 gap-4 md:gap-8 w-full mb-14">
         {CATEGORIES.map((cat) => (
-          <button
+          <motion.button
             key={cat.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: CATEGORIES.indexOf(cat) * 0.05 }}
             onClick={() => onCategoryChange(cat.id)}
             className={`group flex flex-col items-center gap-4 transition-all duration-500 ${
-              category === cat.id ? 'transform -translate-y-2' : ''
+              category === cat.id ? 'transform -translate-y-3' : ''
             }`}
           >
             <div
-              className={`w-16 h-24 flex items-center justify-center border-x border-[#171817]/10 transition-colors ${
-                category === cat.id ? 'border-secondary/30' : ''
+              className={`w-16 h-24 flex items-center justify-center border-x-2 transition-all duration-300 ${
+                category === cat.id ? 'border-[#52B788]/40 bg-[#D8F3DC]/30 shadow-md' : 'border-[#171817]/10 hover:border-[#52B788]/20'
               }`}
             >
               <cat.icon
-                size={30}
-                className={`transition-colors ${category === cat.id ? 'text-secondary' : 'text-[#171817]/40'}`}
+                size={32}
+                className={`transition-colors ${category === cat.id ? 'text-[#52B788]' : 'text-[#171817]/40 group-hover:text-[#171817]/60'}`}
               />
             </div>
-            <span className={`text-sm tracking-widest font-medium transition-colors ${category === cat.id ? 'text-secondary' : ''}`}>
+            <span className={`text-xs tracking-widest font-bold transition-colors duration-300 ${category === cat.id ? 'text-[#52B788]' : 'text-[#171817]/60'}`}>
               {cat.id}
             </span>
-          </button>
+          </motion.button>
         ))}
       </div>
 
@@ -65,20 +68,22 @@ export function InputScreen({
         <textarea
           value={question}
           onChange={(e) => onQuestionChange(e.target.value)}
-          className="w-full bg-transparent border-0 border-b border-[#171817]/10 focus:ring-0 focus:border-secondary text-center text-xl tracking-[0.1em] py-4 placeholder:text-[#171817]/20 resize-none transition-all duration-700"
+          className="w-full bg-transparent border-0 border-b-2 border-[#171817]/15 focus:ring-0 focus:border-[#52B788] text-center text-xl tracking-[0.1em] py-4 placeholder:text-[#171817]/25 resize-none transition-all duration-500 font-serif"
           placeholder="例：下周二的面试是否顺利"
           rows={2}
         />
 
-        {warning && <p className="mt-3 text-sm text-secondary">{warning}</p>}
+        {warning && <p className="mt-4 text-sm text-[#52B788] font-medium">{warning}</p>}
 
-        <div className="mt-12">
-          <button
+        <div className="mt-14">
+          <motion.button
             onClick={onNext}
-            className="px-16 py-4 bg-[#171817] text-white text-xl tracking-[0.5em] hover:bg-secondary transition-all duration-500"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
+            className="px-16 py-4 bg-[#52B788] text-white text-lg tracking-[0.5em] hover:bg-[#40916C] hover:shadow-lg transition-all duration-300 font-bold rounded-lg"
           >
             前往起卦
-          </button>
+          </motion.button>
         </div>
       </div>
     </motion.div>

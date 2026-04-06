@@ -158,6 +158,9 @@ export default function App() {
         judgment: latestRecord.judgment,
         summary: latestRecord.summary,
         fortune: latestRecord.fortune,
+        changedJudgment: latestRecord.changedJudgment,
+        changedSummary: latestRecord.changedSummary,
+        changedFortune: latestRecord.changedFortune,
         movingLines: latestRecord.movingLines,
       });
 
@@ -283,15 +286,6 @@ export default function App() {
       </main>
 
       <BottomNavBar currentScreen={screen} setScreen={setScreen} />
-
-      <div className="fixed inset-0 pointer-events-none z-[100] opacity-[0.03] mix-blend-overlay">
-        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-          <filter id="noiseFilter">
-            <feTurbulence baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" type="fractalNoise" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#noiseFilter)" />
-        </svg>
-      </div>
 
       {showDisclaimer && (
         <div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-6">

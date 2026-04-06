@@ -36,6 +36,9 @@ export interface DivinationRecord {
   judgment: string;
   summary?: string;
   fortune: HexagramData['fortune'];
+  changedJudgment?: string;
+  changedSummary?: string;
+  changedFortune?: HexagramData['fortune'];
   lines: number[];
   movingLines: number[];
   date: string;
