@@ -70,18 +70,26 @@ export function ProfileScreen({
   onLogin,
   onRegister,
   onLogout,
+  onSendRegisterSmsCode,
 }: {
   user: User | null;
   onLogin: (payload: { username: string; password: string }) => Promise<void>;
-  onRegister: (payload: { username: string; password: string; displayName: string }) => Promise<void>;
+  onRegister: (payload: { username: string; password: string; displayName: string; phone: string; smsCode: string }) => Promise<void>;
   onLogout: () => void;
+  onSendRegisterSmsCode: (phone: string) => Promise<{ sent: boolean; expiresInSec: number; phoneMasked: string; debugCode?: string }>;
 }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [smsCode, setSmsCode] = useState('');
+  const [smsLoading, setSmsLoading] = useState(false);
+  const [smsCooldown, setSmsCooldown] = useState(0);
+  const [smsHint, setSmsHint] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showTopupComingSoon, setShowTopupComingSoon] = useState(false);
 
   const submit = async () => {
     setSubmitting(true);
@@ -90,13 +98,41 @@ export function ProfileScreen({
       if (mode === 'login') {
         await onLogin({ username, password });
       } else {
-        await onRegister({ username, password, displayName: displayName || username });
+        await onRegister({ username, password, displayName: displayName || username, phone, smsCode });
       }
       setPassword('');
     } catch (err) {
       setError(err instanceof Error ? err.message : '操作失败');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSendSms = async () => {
+    if (!/^1\d{10}$/.test(phone)) {
+      setError('请输入 11 位手机号');
+      return;
+    }
+    setSmsLoading(true);
+    setError('');
+    setSmsHint('');
+    try {
+      const result = await onSendRegisterSmsCode(phone);
+      setSmsHint(result.debugCode ? `验证码已发送（开发模式验证码：${result.debugCode}）` : '验证码已发送，请注意查收');
+      setSmsCooldown(60);
+      const timer = window.setInterval(() => {
+        setSmsCooldown((prev) => {
+          if (prev <= 1) {
+            window.clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '验证码发送失败');
+    } finally {
+      setSmsLoading(false);
     }
   };
 
@@ -131,12 +167,35 @@ export function ProfileScreen({
             className="w-full border-2 border-[#171817]/15 bg-white/70 rounded-lg px-4 py-3 focus:border-[#52B788] focus:outline-none transition-colors focus:bg-white"
           />
           {mode === 'register' && (
-            <input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="昵称（可选）"
-              className="w-full border-2 border-[#171817]/15 bg-white/70 rounded-lg px-4 py-3 focus:border-[#52B788] focus:outline-none transition-colors focus:bg-white"
-            />
+            <>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="昵称（可选）"
+                className="w-full border-2 border-[#171817]/15 bg-white/70 rounded-lg px-4 py-3 focus:border-[#52B788] focus:outline-none transition-colors focus:bg-white"
+              />
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="手机号（11位）"
+                className="w-full border-2 border-[#171817]/15 bg-white/70 rounded-lg px-4 py-3 focus:border-[#52B788] focus:outline-none transition-colors focus:bg-white"
+              />
+              <div className="flex gap-2">
+                <input
+                  value={smsCode}
+                  onChange={(e) => setSmsCode(e.target.value)}
+                  placeholder="验证码"
+                  className="flex-1 border-2 border-[#171817]/15 bg-white/70 rounded-lg px-4 py-3 focus:border-[#52B788] focus:outline-none transition-colors focus:bg-white"
+                />
+                <button
+                  onClick={() => void handleSendSms()}
+                  disabled={smsLoading || smsCooldown > 0}
+                  className="px-4 rounded-lg border-2 border-[#52B788] text-[#52B788] disabled:opacity-50"
+                >
+                  {smsCooldown > 0 ? `${smsCooldown}s` : smsLoading ? '发送中' : '发送验证码'}
+                </button>
+              </div>
+            </>
           )}
           <input
             value={password}
@@ -148,29 +207,44 @@ export function ProfileScreen({
         </div>
 
         {error && <p className="mt-4 text-sm text-[#52B788] font-medium text-center">{error}</p>}
+        {smsHint && <p className="mt-2 text-sm text-[#171817]/70 text-center">{smsHint}</p>}
 
         <motion.button
           onClick={submit}
-          disabled={submitting || !username || !password}
+          disabled={submitting || !username || !password || (mode === 'register' && (!phone || !smsCode))}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="mt-8 w-full bg-[#52B788] text-white py-3.5 font-bold tracking-wider rounded-lg disabled:opacity-50 hover:bg-[#40916C] transition-all shadow-md hover:shadow-lg"
         >
           {submitting ? '提交中...' : mode === 'login' ? '登录' : '注册'}
         </motion.button>
+
       </motion.div>
     );
   }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full pt-32 pb-40 px-6 max-w-6xl mx-auto w-full">
-      <section className="flex flex-col items-center mb-12 relative">
+      <section className="flex items-start justify-between mb-12 relative gap-6">
         <div className="leaf-decoration leaf-top-right" />
-        <h2 className="ink-title text-4xl font-black text-[#171817] mb-2 tracking-tighter">{user.displayName}</h2>
-        <p className="text-[#171817]/60 text-sm tracking-[0.3em]">@{user.username}</p>
+        <div>
+          <h2 className="ink-title text-4xl font-black text-[#171817] mb-2 tracking-tighter">{user.displayName}</h2>
+          <p className="text-[#171817]/60 text-sm tracking-[0.3em]">@{user.username}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[#171817]/45 text-xs tracking-[0.2em] mb-1">余额</p>
+          <p className="text-2xl font-black text-[#52B788]">¥ {(user.balanceCents / 100).toFixed(2)}</p>
+        </div>
       </section>
 
-      <div className="text-center mb-10">
+      <div className="text-center mb-10 space-y-3">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          onClick={() => setShowTopupComingSoon(true)}
+          className="px-8 py-3 bg-[#52B788] text-white hover:bg-[#40916C] transition-all rounded-lg font-medium shadow-md"
+        >
+          余额充值
+        </motion.button>
         <motion.button 
           whileHover={{ scale: 1.05 }}
           onClick={onLogout} 
@@ -184,6 +258,21 @@ export function ProfileScreen({
         <h3 className="text-lg font-bold mb-6 text-center text-[#171817] tracking-widest">六十四卦矩阵</h3>
         <HexagramGrid />
       </section>
+
+      {showTopupComingSoon && (
+        <div className="fixed inset-0 z-[220] bg-black/40 flex items-center justify-center p-6">
+          <div className="w-full max-w-sm bg-[#fcf9f2] border-2 border-[#52B788]/20 rounded-xl p-6 text-center">
+            <h3 className="text-2xl font-black text-[#171817] mb-3">余额充值</h3>
+            <p className="text-[#171817]/70 mb-6">该功能正在开发中，暂未开放使用。</p>
+            <button
+              onClick={() => setShowTopupComingSoon(false)}
+              className="px-5 py-2 rounded-lg bg-[#52B788] text-white"
+            >
+              我知道了
+            </button>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

@@ -16,6 +16,7 @@ import {
   me,
   register,
   saveUserRecord,
+  sendRegisterSmsCode,
   validateQuestion,
 } from './services/api';
 import {
@@ -94,6 +95,13 @@ export default function App() {
   };
 
   const handleGoToCasting = async () => {
+    if (!user) {
+      setWarning('请先登录/注册后再起卦。');
+      window.alert('请先登录/注册');
+      setScreen('profile');
+      return;
+    }
+
     const limit = canCastForCategory(category);
     if (!limit.allowed && limit.nextAt) {
       setWarning(`心诚则灵，建议先静心感悟今日这一卦。可在 ${new Date(limit.nextAt).toLocaleString('zh-CN')} 后再来。`);
@@ -193,7 +201,13 @@ export default function App() {
     await loadUserHistory(response.token);
   };
 
-  const handleRegister = async (payload: { username: string; password: string; displayName: string }) => {
+  const handleRegister = async (payload: {
+    username: string;
+    password: string;
+    displayName: string;
+    phone: string;
+    smsCode: string;
+  }) => {
     const response = await register(payload);
     setToken(response.token);
     setTokenState(response.token);
@@ -208,6 +222,10 @@ export default function App() {
     setUser(null);
     setHistory(getGuestHistory());
     setCurrentRecord(null);
+  };
+
+  const handleSendRegisterSmsCode = async (phone: string) => {
+    return sendRegisterSmsCode({ phone });
   };
 
   const handleBackToStartAndClearResult = () => {
@@ -273,6 +291,7 @@ export default function App() {
               onLogin={handleLogin}
               onRegister={handleRegister}
               onLogout={handleLogout}
+              onSendRegisterSmsCode={handleSendRegisterSmsCode}
             />
           )}
 

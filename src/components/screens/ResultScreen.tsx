@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, Brain, Sparkles } from 'lucide-react';
 import type { DivinationRecord } from '../../types';
@@ -96,6 +97,53 @@ function movingHint(record: DivinationRecord): string {
   return `动爻在第 ${positions} 爻。当前适合边推进边校准，不宜一次性押注。`;
 }
 
+type Html2Canvas = (
+  element: HTMLElement,
+  options?: {
+    useCORS?: boolean;
+    scale?: number;
+    backgroundColor?: string;
+    windowWidth?: number;
+    windowHeight?: number;
+    ignoreElements?: (element: Element) => boolean;
+    onclone?: (clonedDocument: Document) => void;
+  },
+) => Promise<HTMLCanvasElement>;
+
+declare global {
+  interface Window {
+    htmlToImage?: {
+      toPng: (
+        node: HTMLElement,
+        options?: {
+          pixelRatio?: number;
+          backgroundColor?: string;
+          cacheBust?: boolean;
+          width?: number;
+          height?: number;
+          filter?: (node: HTMLElement) => boolean;
+        },
+      ) => Promise<string>;
+    };
+  }
+}
+
+async function loadHtmlToImage(): Promise<NonNullable<Window['htmlToImage']>> {
+  if (window.htmlToImage?.toPng) return window.htmlToImage;
+  await new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('导出组件加载失败，请检查网络后重试'));
+    document.head.appendChild(script);
+  });
+  if (!window.htmlToImage?.toPng) {
+    throw new Error('导出组件初始化失败');
+  }
+  return window.htmlToImage;
+}
+
 export function ResultScreen({
   record,
   loading,
@@ -111,12 +159,69 @@ export function ResultScreen({
 }) {
   const effectiveFortune = getEffectiveFortune(record);
   const interpretation = offlineInterpretation(record);
+  const captureRef = useRef<HTMLDivElement | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  const handleExportImage = async () => {
+    if (!captureRef.current || exporting) return;
+    setExporting(true);
+    setExportError('');
+    let stage: HTMLDivElement | null = null;
+    try {
+      const htmlToImage = await loadHtmlToImage();
+
+      const source = captureRef.current;
+      const sourceRect = source.getBoundingClientRect();
+      const exportWidth = Math.ceil(sourceRect.width);
+
+      const clone = source.cloneNode(true) as HTMLDivElement;
+      clone.querySelectorAll('[data-export-ignore="true"]').forEach((node) => node.remove());
+      clone.style.margin = '0';
+      clone.style.maxWidth = 'none';
+      clone.style.width = `${exportWidth}px`;
+      clone.style.transform = 'none';
+
+      stage = document.createElement('div');
+      stage.style.position = 'fixed';
+      stage.style.left = '-100000px';
+      stage.style.top = '0';
+      stage.style.zIndex = '-1';
+      stage.style.pointerEvents = 'none';
+      stage.style.background = '#fcf9f2';
+      stage.appendChild(clone);
+      document.body.appendChild(stage);
+
+      const exportHeight = Math.ceil(clone.scrollHeight);
+
+      const dataUrl = await htmlToImage.toPng(clone, {
+        cacheBust: true,
+        backgroundColor: '#fcf9f2',
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        width: exportWidth,
+        height: exportHeight,
+      });
+      const link = document.createElement('a');
+      const safeHexagram = record.primaryHexagram.replace(/\s+/g, '');
+      link.download = `${new Date().toISOString().slice(0, 10)}-${safeHexagram}-卦象解析.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : '导出失败，请稍后重试');
+    } finally {
+      if (stage && stage.parentNode) {
+        stage.parentNode.removeChild(stage);
+      }
+      setExporting(false);
+    }
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="h-full pt-32 pb-40 px-6 max-w-2xl mx-auto w-full"
+      ref={captureRef}
     >
       <div className="text-center mb-10 relative">
         {/* 春风绿叶装饰 */}
@@ -223,7 +328,7 @@ export function ResultScreen({
         )}
       </div>
 
-      <div className="w-full flex justify-center pb-8">
+      <div className="w-full flex justify-center pb-8" data-export-ignore="true">
         <div className="w-full flex flex-col items-center gap-4">
           <button
             onClick={onConsultAi}
@@ -237,12 +342,20 @@ export function ResultScreen({
             {!loading && !record.aiText && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
           </button>
           <button
+            onClick={() => void handleExportImage()}
+            disabled={exporting}
+            className="px-8 py-2.5 border-2 border-[#52B788] text-[#52B788] hover:bg-[#D8F3DC]/30 transition-all rounded-lg font-medium tracking-wide disabled:opacity-50"
+          >
+            {exporting ? '导出中...' : '导出长图'}
+          </button>
+          <button
             onClick={onBackToStart}
             className="px-8 py-2.5 border-2 border-[#171817]/20 text-[#171817]/70 hover:border-[#52B788] hover:text-[#52B788] hover:bg-[#D8F3DC]/30 transition-all rounded-lg font-medium tracking-wide"
           >
             返回起卦
           </button>
           {error && <p className="text-sm text-[#52B788] text-center font-medium">{error}</p>}
+          {exportError && <p className="text-sm text-[#52B788] text-center font-medium">{exportError}</p>}
         </div>
       </div>
     </motion.div>

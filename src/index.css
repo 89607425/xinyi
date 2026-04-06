@@ -30,6 +30,17 @@
     text-shadow: 0 1px 0 rgba(23, 24, 23, 0.2), 0 8px 20px rgba(23, 24, 23, 0.15);
   }
 
+  .ink-hero-title {
+    font-family: "HanziPen SC", "STKaiti", "KaiTi", "Kaiti SC", "Songti SC", serif;
+    text-shadow: 0 2px 0 rgba(23, 24, 23, 0.24), 0 14px 26px rgba(23, 24, 23, 0.18);
+  }
+
+  .ink-subtitle {
+    font-family: "STKaiti", "KaiTi", "Kaiti SC", serif;
+    letter-spacing: 0.28em;
+    text-shadow: 0 1px 0 rgba(23, 24, 23, 0.15);
+  }
+
   .spring-leaf {
     position: relative;
     display: inline-block;

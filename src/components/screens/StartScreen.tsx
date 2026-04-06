@@ -20,7 +20,7 @@ export function StartScreen({
     >
       <div className="absolute inset-0 z-0 opacity-20 pointer-events-none overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1506738773649-19e076dd3f13?w=2000&q=80"
+          src="/mountain-ink.svg"
           alt="Background"
           className="w-full h-full object-cover grayscale ink-fade"
         />
@@ -48,7 +48,7 @@ export function StartScreen({
           {/* 春风绿叶装饰 */}
           <div className="absolute -top-8 -left-6 text-4xl opacity-30 group-hover:opacity-50 transition-opacity animate-bounce">🍃</div>
           <div className="absolute -bottom-6 -right-8 text-3xl opacity-25 group-hover:opacity-40 transition-opacity" style={{animation: 'sway 4s ease-in-out infinite'}}>🍃</div>
-          <span className="ink-title text-7xl md:text-9xl font-black tracking-[1.5rem] text-[#171817] group-hover:text-[#52B788] transition-colors">
+          <span className="ink-hero-title text-7xl md:text-9xl font-black tracking-[1.5rem] text-[#171817] group-hover:text-[#52B788] transition-colors">
             起卦
           </span>
           <div className="absolute -right-8 top-1/2 -translate-y-1/2 bg-[#52B788] w-6 h-6 flex items-center justify-center shadow-md">
@@ -57,9 +57,8 @@ export function StartScreen({
         </button>
 
         <div className="mt-8 flex flex-col items-center gap-3">
-          <p className="text-sm text-[#171817]/55 tracking-[0.4em] font-medium">遇事不决可问春风</p>
+          <p className="ink-subtitle text-sm text-[#171817]/55 font-semibold">遇事不决可问春风</p>
           <p className="text-xs text-[#171817]/45 tracking-widest">从这里进入，进行占卜</p>
-          <p className="text-[11px] text-[#171817]/35 tracking-widest">民俗文化研究 · 心理健康辅助</p>
           {onResumeResult && (
             <button
               onClick={onResumeResult}

@@ -6,6 +6,8 @@ export interface User {
   id: string;
   username: string;
   displayName: string;
+  phoneMasked?: string | null;
+  balanceCents: number;
 }
 
 export interface HexagramData {

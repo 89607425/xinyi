@@ -24,7 +24,13 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function register(payload: { username: string; password: string; displayName: string }) {
+export function register(payload: {
+  username: string;
+  password: string;
+  displayName: string;
+  phone: string;
+  smsCode: string;
+}) {
   return request<AuthResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -89,3 +95,41 @@ export function validateQuestion(payload: { question: string }) {
     body: JSON.stringify(payload),
   });
 }
+
+export function topupBalance(
+  token: string,
+  payload: { amountYuan: number; channel: 'wechat' | 'alipay' },
+) {
+  return request<{ user: User; transactionId: string; paid: boolean }>('/wallet/topup', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function sendRegisterSmsCode(payload: { phone: string }) {
+  return request<{ sent: boolean; expiresInSec: number; phoneMasked: string; debugCode?: string }>('/auth/sms/send', {
+    method: 'POST',
+    body: JSON.stringify({ ...payload, purpose: 'register' }),
+  });
+}
+
+// WeChat QR login/register is temporarily disabled.
+// export function startWechatQr(payload: { mode: 'login' | 'register' }) {
+//   return request<{ mode: 'login' | 'register'; mock: boolean; url?: string; sessionId: string; qrText?: string; expiresAt: string }>(
+//     '/auth/wechat/qr/start',
+//     {
+//       method: 'POST',
+//       body: JSON.stringify(payload),
+//     },
+//   );
+// }
+//
+// export function confirmWechatQrMock(payload: { sessionId: string }) {
+//   return request<AuthResponse>('/auth/wechat/qr/mock-confirm', {
+//     method: 'POST',
+//     body: JSON.stringify(payload),
+//   });
+// }
