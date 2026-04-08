@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { BottomNavBar } from './components/layout/BottomNavBar';
+import { AdminScreen } from './components/screens/AdminScreen';
 import { TopAppBar } from './components/layout/TopAppBar';
 import { CastingScreen } from './components/screens/CastingScreen';
 import { DailyHexagramScreen } from './components/screens/DailyHexagramScreen';
@@ -10,6 +11,14 @@ import { ProfileScreen } from './components/screens/ProfileScreen';
 import { ResultScreen } from './components/screens/ResultScreen';
 import { StartScreen } from './components/screens/StartScreen';
 import {
+  adminDeleteUser,
+  adminGetDivinations,
+  adminGetUsers,
+  adminLogin,
+  adminSetUserBan,
+  type AdminDivinationRecord,
+  type AdminUserSummary,
+  fetchUserCategoryLimit,
   fetchUserHistory,
   getAiInterpretation,
   login,
@@ -21,8 +30,6 @@ import {
 } from './services/api';
 import {
   buildRecord,
-  canCastForCategory,
-  markCategoryCast,
 } from './services/divination';
 import { getTodayDailyHexagram } from './services/daily';
 import {
@@ -50,6 +57,11 @@ export default function App() {
   const [token, setTokenState] = useState<string | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [dailyHexagram, setDailyHexagram] = useState(() => getTodayDailyHexagram());
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+  const [adminUsers, setAdminUsers] = useState<AdminUserSummary[]>([]);
+  const [adminRecords, setAdminRecords] = useState<AdminDivinationRecord[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState('');
 
   useEffect(() => {
     const boot = async () => {
@@ -102,9 +114,14 @@ export default function App() {
       return;
     }
 
-    const limit = canCastForCategory(category);
-    if (!limit.allowed && limit.nextAt) {
-      setWarning(`心诚则灵，建议先静心感悟今日这一卦。可在 ${new Date(limit.nextAt).toLocaleString('zh-CN')} 后再来。`);
+    if (!token) {
+      setWarning('登录状态异常，请重新登录后再试。');
+      return;
+    }
+
+    const limit = await fetchUserCategoryLimit(token, category);
+    if (!limit.allowed) {
+      setWarning(`今日此分类已起过卦，可在 ${new Date(limit.nextAt).toLocaleString('zh-CN', { hour12: false })} 后再来。`);
       return;
     }
 
@@ -124,8 +141,6 @@ export default function App() {
   };
 
   const finishCasting = async (lines: number[]) => {
-    markCategoryCast(category);
-
     const record = buildRecord({
       category,
       question,
@@ -138,9 +153,17 @@ export default function App() {
     setAiError('');
 
     if (token) {
-      const { record: saved } = await saveUserRecord(token, record);
-      setHistory((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
-      setCurrentRecord(saved);
+      try {
+        const { record: saved } = await saveUserRecord(token, record);
+        setHistory((prev) => [saved, ...prev.filter((item) => item.id !== saved.id)]);
+        setCurrentRecord(saved);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '保存起卦记录失败，请稍后重试。';
+        setWarning(message);
+        setCurrentRecord(null);
+        setScreen('input');
+        return;
+      }
     } else {
       setHistory((prev) => {
         const next = [record, ...prev.filter((item) => item.id !== record.id)];
@@ -234,6 +257,56 @@ export default function App() {
     setScreen('start');
   };
 
+  const loadAdminData = async (tokenOverride?: string) => {
+    const activeToken = tokenOverride || adminToken;
+    if (!activeToken) return;
+    setAdminLoading(true);
+    setAdminError('');
+    try {
+      const [{ users }, { records }] = await Promise.all([
+        adminGetUsers(activeToken),
+        adminGetDivinations(activeToken),
+      ]);
+      setAdminUsers(users);
+      setAdminRecords(records);
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : '管理员数据加载失败');
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (screen === 'admin' && adminToken && !adminLoading && !adminUsers.length && !adminRecords.length) {
+      void loadAdminData(adminToken);
+    }
+  }, [screen, adminToken, adminLoading, adminUsers.length, adminRecords.length]);
+
+  const handleAdminLogin = async (payload: { username: string; password: string }) => {
+    const { token: nextToken } = await adminLogin(payload);
+    setAdminToken(nextToken);
+    await loadAdminData(nextToken);
+  };
+
+  const handleAdminLogout = () => {
+    setAdminToken(null);
+    setAdminUsers([]);
+    setAdminRecords([]);
+    setAdminError('');
+  };
+
+  const handleAdminToggleBan = async (userId: string, banned: boolean) => {
+    if (!adminToken) return;
+    await adminSetUserBan(adminToken, userId, banned);
+    await loadAdminData(adminToken);
+  };
+
+  const handleAdminDeleteUser = async (userId: string) => {
+    if (!adminToken) return;
+    await adminDeleteUser(adminToken, userId);
+    await loadAdminData(adminToken);
+  };
+
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden">
       <TopAppBar />
@@ -292,6 +365,23 @@ export default function App() {
               onRegister={handleRegister}
               onLogout={handleLogout}
               onSendRegisterSmsCode={handleSendRegisterSmsCode}
+              onOpenAdmin={() => setScreen('admin')}
+            />
+          )}
+
+          {screen === 'admin' && (
+            <AdminScreen
+              adminToken={adminToken}
+              users={adminUsers}
+              records={adminRecords}
+              loading={adminLoading}
+              error={adminError}
+              onLogin={handleAdminLogin}
+              onRefresh={() => loadAdminData()}
+              onToggleBan={handleAdminToggleBan}
+              onDeleteUser={handleAdminDeleteUser}
+              onLogout={handleAdminLogout}
+              onBack={() => setScreen('profile')}
             />
           )}
 

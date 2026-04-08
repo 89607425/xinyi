@@ -76,31 +76,3 @@ export function buildRecord(input: {
     aiText: input.aiText,
   };
 }
-
-const LIMIT_KEY = 'xinyi_cast_limit_v1';
-const DAY = 24 * 60 * 60 * 1000;
-
-interface LimitState {
-  [category: string]: number;
-}
-
-export function canCastForCategory(category: Category): { allowed: boolean; nextAt?: number } {
-  const raw = localStorage.getItem(LIMIT_KEY);
-  const state: LimitState = raw ? JSON.parse(raw) : {};
-  const timestamp = state[category];
-  if (!timestamp) {
-    return { allowed: true };
-  }
-  const nextAt = timestamp + DAY;
-  return {
-    allowed: Date.now() >= nextAt,
-    nextAt,
-  };
-}
-
-export function markCategoryCast(category: Category) {
-  const raw = localStorage.getItem(LIMIT_KEY);
-  const state: LimitState = raw ? JSON.parse(raw) : {};
-  state[category] = Date.now();
-  localStorage.setItem(LIMIT_KEY, JSON.stringify(state));
-}

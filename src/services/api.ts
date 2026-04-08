@@ -1,4 +1,4 @@
-import type { AuthResponse, DivinationRecord, User } from '../types';
+import type { AuthResponse, Category, DivinationRecord, User } from '../types';
 
 const API_BASE = '/api';
 
@@ -70,6 +70,15 @@ export function saveUserRecord(token: string, record: DivinationRecord) {
   });
 }
 
+export function fetchUserCategoryLimit(token: string, category: Category) {
+  const params = new URLSearchParams({ category });
+  return request<{ allowed: boolean; nextAt: number }>(`/divinations/limit?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 export function getAiInterpretation(payload: {
   question: string;
   category: string;
@@ -113,6 +122,69 @@ export function sendRegisterSmsCode(payload: { phone: string }) {
   return request<{ sent: boolean; expiresInSec: number; phoneMasked: string; debugCode?: string }>('/auth/sms/send', {
     method: 'POST',
     body: JSON.stringify({ ...payload, purpose: 'register' }),
+  });
+}
+
+export interface AdminUserSummary {
+  id: string;
+  username: string;
+  displayName: string;
+  phoneMasked: string | null;
+  balanceCents: number;
+  isBanned: boolean;
+  createdAt: string;
+  recordCount: number;
+}
+
+export interface AdminDivinationRecord {
+  id: string;
+  userId: string;
+  username: string;
+  displayName: string;
+  createdAt: string;
+  payload: DivinationRecord;
+}
+
+export function adminLogin(payload: { username: string; password: string }) {
+  return request<{ token: string }>('/admin/login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminGetUsers(token: string) {
+  return request<{ users: AdminUserSummary[] }>('/admin/users', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export function adminSetUserBan(token: string, userId: string, banned: boolean) {
+  return request<{ ok: true }>('/admin/users/ban', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ userId, banned }),
+  });
+}
+
+export function adminDeleteUser(token: string, userId: string) {
+  return request<{ ok: true }>('/admin/users/delete', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ userId }),
+  });
+}
+
+export function adminGetDivinations(token: string) {
+  return request<{ records: AdminDivinationRecord[] }>('/admin/divinations', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 }
 

@@ -36,8 +36,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DIST_DIR = path.resolve(__dirname, '../dist');
 const MOCK_PAYMENT = String(process.env.MOCK_PAYMENT || 'true').toLowerCase() !== 'false';
-const MOCK_SMS = String(process.env.MOCK_SMS || 'true').toLowerCase() !== 'false';
+const MOCK_SMS = String(process.env.MOCK_SMS || 'false').toLowerCase() !== 'false';
 const MOCK_WECHAT_AUTH = String(process.env.MOCK_WECHAT_AUTH || 'true').toLowerCase() !== 'false';
+const DAY_MS = 24 * 60 * 60 * 1000;
+const CHINA_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
+const ADMIN_USERNAME = 'admin';
+const ADMIN_PASSWORD = 'xinyi_admin_2026';
+const ADMIN_SESSION_TTL_MS = DAY_MS;
+const adminSessions = new Map();
 
 let pool;
 const DEFAULT_SENSITIVE_WORDS = ['政治', '寿命', '彩票', '开奖号码', '违法'];
@@ -54,6 +60,64 @@ function randomId(prefix) {
 function maskPhone(phone) {
   if (!PHONE_REGEX.test(phone)) return phone;
   return `${phone.slice(0, 3)}****${phone.slice(7)}`;
+}
+
+function percentEncode(value) {
+  return encodeURIComponent(value)
+    .replace(/\+/g, '%20')
+    .replace(/\*/g, '%2A')
+    .replace(/%7E/g, '~');
+}
+
+async function sendSmsByAliyun(phone, code) {
+  const accessKeyId = process.env.ALIYUN_ACCESS_KEY_ID || '';
+  const accessKeySecret = process.env.ALIYUN_ACCESS_KEY_SECRET || '';
+  const signName = process.env.ALIYUN_SMS_SIGN_NAME || '';
+  const templateCode = process.env.ALIYUN_SMS_TEMPLATE_CODE || '';
+  const endpoint = process.env.ALIYUN_SMS_ENDPOINT || 'https://dysmsapi.aliyuncs.com/';
+
+  if (!accessKeyId || !accessKeySecret || !signName || !templateCode) {
+    throw new Error('短信服务未配置：请设置 ALIYUN_ACCESS_KEY_ID/ALIYUN_ACCESS_KEY_SECRET/ALIYUN_SMS_SIGN_NAME/ALIYUN_SMS_TEMPLATE_CODE');
+  }
+
+  const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const params = {
+    AccessKeyId: accessKeyId,
+    Action: 'SendSms',
+    Format: 'JSON',
+    PhoneNumbers: phone,
+    RegionId: 'cn-hangzhou',
+    SignName: signName,
+    SignatureMethod: 'HMAC-SHA1',
+    SignatureNonce: crypto.randomUUID(),
+    SignatureVersion: '1.0',
+    TemplateCode: templateCode,
+    TemplateParam: JSON.stringify({ code }),
+    Timestamp: timestamp,
+    Version: '2017-05-25',
+  };
+
+  const sortedKeys = Object.keys(params).sort();
+  const canonicalized = sortedKeys.map((key) => `${percentEncode(key)}=${percentEncode(String(params[key]))}`).join('&');
+  const stringToSign = `GET&${percentEncode('/')}&${percentEncode(canonicalized)}`;
+  const signature = crypto.createHmac('sha1', `${accessKeySecret}&`).update(stringToSign).digest('base64');
+  const query = `${canonicalized}&Signature=${percentEncode(signature)}`;
+  const url = `${endpoint}?${query}`;
+
+  const response = await fetch(url, { method: 'GET' });
+  const raw = await response.text();
+  let data = {};
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(`短信服务返回异常：${raw || 'empty response'}`);
+  }
+
+  const codeField = data?.Code || '';
+  if (!response.ok || codeField !== 'OK') {
+    const message = data?.Message || `HTTP ${response.status}`;
+    throw new Error(`短信发送失败：${codeField || 'Unknown'} ${message}`.trim());
+  }
 }
 
 async function initDb() {
@@ -108,6 +172,16 @@ async function initDb() {
     const [balanceColumnRows] = await pool.query("SHOW COLUMNS FROM users LIKE 'balance_cents'");
     if (!balanceColumnRows.length) {
       await pool.query('ALTER TABLE users ADD COLUMN balance_cents INT NOT NULL DEFAULT 0');
+    }
+
+    const [bannedColumnRows] = await pool.query("SHOW COLUMNS FROM users LIKE 'is_banned'");
+    if (!bannedColumnRows.length) {
+      await pool.query('ALTER TABLE users ADD COLUMN is_banned TINYINT(1) NOT NULL DEFAULT 0');
+    }
+
+    const [bannedAtColumnRows] = await pool.query("SHOW COLUMNS FROM users LIKE 'banned_at'");
+    if (!bannedAtColumnRows.length) {
+      await pool.query('ALTER TABLE users ADD COLUMN banned_at DATETIME DEFAULT NULL');
     }
 
     const [phoneIndexRows] = await pool.query("SHOW INDEX FROM users WHERE Key_name = 'uniq_users_phone'");
@@ -225,6 +299,83 @@ function sanitizeUser(user) {
   };
 }
 
+function sanitizeAdminUser(user) {
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.display_name,
+    phoneMasked: user.phone ? maskPhone(String(user.phone)) : null,
+    balanceCents: Number(user.balance_cents || 0),
+    isBanned: Boolean(user.is_banned),
+    createdAt: user.created_at,
+    recordCount: Number(user.record_count || 0),
+  };
+}
+
+function createAdminToken() {
+  return `adm_${crypto.randomBytes(32).toString('hex')}`;
+}
+
+function pruneAdminSessions() {
+  const now = Date.now();
+  for (const [token, expiresAt] of adminSessions.entries()) {
+    if (expiresAt <= now) {
+      adminSessions.delete(token);
+    }
+  }
+}
+
+function getChinaDayWindow(now = new Date()) {
+  const chinaNow = new Date(now.getTime() + CHINA_UTC_OFFSET_MS);
+  const startUtcMs = Date.UTC(
+    chinaNow.getUTCFullYear(),
+    chinaNow.getUTCMonth(),
+    chinaNow.getUTCDate(),
+    0,
+    0,
+    0,
+    0,
+  ) - CHINA_UTC_OFFSET_MS;
+  return {
+    start: new Date(startUtcMs),
+    end: new Date(startUtcMs + DAY_MS),
+  };
+}
+
+function formatChinaDateTime(date) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
+async function getCategoryLimitState(userId, category) {
+  const { start, end } = getChinaDayWindow();
+  const [rows] = await pool.query(
+    `
+      SELECT id
+      FROM divination_records
+      WHERE user_id = ?
+        AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.category')) = ?
+        AND created_at >= ?
+        AND created_at < ?
+      LIMIT 1
+    `,
+    [userId, category, start, end],
+  );
+
+  return {
+    allowed: rows.length === 0,
+    nextAt: end.getTime(),
+  };
+}
+
 async function requireAuth(req, res, next) {
   const header = req.headers.authorization;
   const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
@@ -235,7 +386,7 @@ async function requireAuth(req, res, next) {
 
   const [rows] = await pool.query(
     `
-      SELECT u.id, u.username, u.phone, u.display_name, u.balance_cents
+      SELECT u.id, u.username, u.phone, u.display_name, u.balance_cents, u.is_banned
       FROM sessions s
       JOIN users u ON u.id = s.user_id
       WHERE s.token = ?
@@ -249,14 +400,54 @@ async function requireAuth(req, res, next) {
     res.status(401).send('Unauthorized');
     return;
   }
+  if (Boolean(user.is_banned)) {
+    res.status(403).send('账号已被封禁');
+    return;
+  }
 
   req.user = user;
   req.token = token;
   next();
 }
 
+function requireAdmin(req, res, next) {
+  const header = req.headers.authorization;
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!token) {
+    res.status(401).send('Unauthorized');
+    return;
+  }
+
+  pruneAdminSessions();
+  const expiresAt = adminSessions.get(token) || 0;
+  if (!expiresAt || expiresAt <= Date.now()) {
+    adminSessions.delete(token);
+    res.status(401).send('Unauthorized');
+    return;
+  }
+
+  req.adminToken = token;
+  next();
+}
+
 app.get('/api/health', (_, res) => {
   res.json({ ok: true });
+});
+
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    res.status(400).send('用户名和密码必填');
+    return;
+  }
+  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+    res.status(401).send('管理员账号或密码错误');
+    return;
+  }
+
+  const token = createAdminToken();
+  adminSessions.set(token, Date.now() + ADMIN_SESSION_TTL_MS);
+  res.json({ token });
 });
 
 app.get('/api/config/sensitive-words', async (_, res) => {
@@ -351,7 +542,13 @@ app.post('/api/auth/sms/send', async (req, res) => {
   if (MOCK_SMS) {
     console.log(`[MOCK_SMS] phone=${phone} code=${code}`);
   } else {
-    // TODO: integrate real SMS provider (Aliyun/Tencent etc.)
+    try {
+      await sendSmsByAliyun(phone, code);
+    } catch (error) {
+      console.error('Send SMS failed:', error);
+      res.status(502).send(error instanceof Error ? error.message : '短信发送失败，请稍后重试');
+      return;
+    }
   }
 
   res.json({
@@ -459,7 +656,7 @@ app.post('/api/auth/login', async (req, res) => {
 
   const [rows] = await pool.query(
     `
-      SELECT id, username, phone, display_name, balance_cents, salt, password_hash
+      SELECT id, username, phone, display_name, balance_cents, is_banned, salt, password_hash
       FROM users
       WHERE username = ?
       LIMIT 1
@@ -475,6 +672,10 @@ app.post('/api/auth/login', async (req, res) => {
 
   if (hashPassword(password, user.salt) !== user.password_hash) {
     res.status(401).send('账号或密码错误');
+    return;
+  }
+  if (Boolean(user.is_banned)) {
+    res.status(403).send('账号已被封禁');
     return;
   }
 
@@ -584,10 +785,31 @@ app.get('/api/divinations', requireAuth, async (req, res) => {
   res.json({ records });
 });
 
+app.get('/api/divinations/limit', requireAuth, async (req, res) => {
+  const category = String(req.query?.category || '').trim();
+  if (!category) {
+    res.status(400).send('category 不能为空');
+    return;
+  }
+
+  const limitState = await getCategoryLimitState(req.user.id, category);
+  res.json(limitState);
+});
+
 app.post('/api/divinations', requireAuth, async (req, res) => {
   const { record } = req.body || {};
   if (!record?.id) {
     res.status(400).send('记录格式错误');
+    return;
+  }
+  if (!record?.category) {
+    res.status(400).send('category 不能为空');
+    return;
+  }
+
+  const limitState = await getCategoryLimitState(req.user.id, record.category);
+  if (!limitState.allowed) {
+    res.status(429).send(`今日「${record.category}」已起过卦，请于北京时间 ${formatChinaDateTime(new Date(limitState.nextAt))} 后再试`);
     return;
   }
 
@@ -609,6 +831,90 @@ app.post('/api/divinations', requireAuth, async (req, res) => {
   );
 
   res.json({ record: nextRecord });
+});
+
+app.get('/api/admin/users', requireAdmin, async (_, res) => {
+  const [rows] = await pool.query(
+    `
+      SELECT
+        u.id,
+        u.username,
+        u.phone,
+        u.display_name,
+        u.balance_cents,
+        u.is_banned,
+        u.created_at,
+        COUNT(d.id) AS record_count
+      FROM users u
+      LEFT JOIN divination_records d ON d.user_id = u.id
+      GROUP BY u.id
+      ORDER BY u.created_at DESC
+    `,
+  );
+
+  res.json({ users: rows.map(sanitizeAdminUser) });
+});
+
+app.get('/api/admin/divinations', requireAdmin, async (_, res) => {
+  const [rows] = await pool.query(
+    `
+      SELECT
+        d.id,
+        d.user_id,
+        d.payload,
+        d.created_at,
+        u.username,
+        u.display_name
+      FROM divination_records d
+      JOIN users u ON u.id = d.user_id
+      ORDER BY d.created_at DESC
+      LIMIT 2000
+    `,
+  );
+
+  const records = rows.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    username: row.username,
+    displayName: row.display_name,
+    createdAt: row.created_at,
+    payload: row.payload,
+  }));
+  res.json({ records });
+});
+
+app.post('/api/admin/users/ban', requireAdmin, async (req, res) => {
+  const { userId, banned } = req.body || {};
+  if (!userId || typeof banned !== 'boolean') {
+    res.status(400).send('userId 和 banned 必填');
+    return;
+  }
+
+  await pool.query(
+    `
+      UPDATE users
+      SET is_banned = ?, banned_at = ?
+      WHERE id = ?
+    `,
+    [banned ? 1 : 0, banned ? new Date() : null, userId],
+  );
+
+  if (banned) {
+    await pool.query('DELETE FROM sessions WHERE user_id = ?', [userId]);
+  }
+
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/users/delete', requireAdmin, async (req, res) => {
+  const { userId } = req.body || {};
+  if (!userId) {
+    res.status(400).send('userId 必填');
+    return;
+  }
+
+  await pool.query('DELETE FROM users WHERE id = ?', [userId]);
+  res.json({ ok: true });
 });
 
 app.post('/api/ai/interpret', async (req, res) => {

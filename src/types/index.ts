@@ -1,4 +1,4 @@
-export type Screen = 'start' | 'input' | 'casting' | 'result' | 'history' | 'profile' | 'daily';
+export type Screen = 'start' | 'input' | 'casting' | 'result' | 'history' | 'profile' | 'daily' | 'admin';
 
 export type Category = '学业功名' | '事业前程' | '情缘发展' | '财运经营' | '寻物杂项';
 

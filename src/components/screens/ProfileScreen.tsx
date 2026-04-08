@@ -71,12 +71,14 @@ export function ProfileScreen({
   onRegister,
   onLogout,
   onSendRegisterSmsCode,
+  onOpenAdmin,
 }: {
   user: User | null;
   onLogin: (payload: { username: string; password: string }) => Promise<void>;
   onRegister: (payload: { username: string; password: string; displayName: string; phone: string; smsCode: string }) => Promise<void>;
   onLogout: () => void;
   onSendRegisterSmsCode: (phone: string) => Promise<{ sent: boolean; expiresInSec: number; phoneMasked: string; debugCode?: string }>;
+  onOpenAdmin: () => void;
 }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
@@ -219,6 +221,13 @@ export function ProfileScreen({
           {submitting ? '提交中...' : mode === 'login' ? '登录' : '注册'}
         </motion.button>
 
+        <button
+          onClick={onOpenAdmin}
+          className="mt-4 w-full py-3 border-2 border-[#171817]/20 hover:border-[#52B788] text-[#171817]/70 hover:text-[#52B788] rounded-lg transition-colors"
+        >
+          管理员入口
+        </button>
+
       </motion.div>
     );
   }
@@ -251,6 +260,13 @@ export function ProfileScreen({
           className="px-8 py-3 border-2 border-[#171817]/20 hover:border-[#52B788] text-[#171817]/70 hover:text-[#52B788] hover:bg-[#D8F3DC]/30 transition-all rounded-lg font-medium"
         >
           退出登录
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          onClick={onOpenAdmin}
+          className="px-8 py-3 border-2 border-[#171817]/20 hover:border-[#52B788] text-[#171817]/70 hover:text-[#52B788] hover:bg-[#D8F3DC]/30 transition-all rounded-lg font-medium"
+        >
+          管理员入口
         </motion.button>
       </div>
 
