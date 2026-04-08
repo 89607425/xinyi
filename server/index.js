@@ -36,7 +36,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DIST_DIR = path.resolve(__dirname, '../dist');
 const MOCK_PAYMENT = String(process.env.MOCK_PAYMENT || 'true').toLowerCase() !== 'false';
-const MOCK_SMS = String(process.env.MOCK_SMS || 'false').toLowerCase() !== 'false';
+const MOCK_SMS = String(process.env.MOCK_SMS || 'true').toLowerCase() !== 'false';
 const MOCK_WECHAT_AUTH = String(process.env.MOCK_WECHAT_AUTH || 'true').toLowerCase() !== 'false';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CHINA_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
@@ -273,6 +273,7 @@ app.use((req, res, next) => {
   const allowOrigin = process.env.APP_URL || req.headers.origin || '*';
   res.setHeader('Access-Control-Allow-Origin', allowOrigin);
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Expose-Headers', 'X-System-Verification-Code');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   if (req.method === 'OPTIONS') {
     res.status(204).end();
@@ -541,6 +542,7 @@ app.post('/api/auth/sms/send', async (req, res) => {
 
   if (MOCK_SMS) {
     console.log(`[MOCK_SMS] phone=${phone} code=${code}`);
+    res.setHeader('X-System-Verification-Code', code);
   } else {
     try {
       await sendSmsByAliyun(phone, code);
