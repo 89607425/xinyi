@@ -107,6 +107,11 @@ export default function App() {
   };
 
   const handleGoToCasting = async () => {
+    if (!question.trim()) {
+      setWarning('请先输入问题再进行占卜');
+      return;
+    }
+
     if (!user) {
       setWarning('请先登录/注册后再起卦。');
       window.alert('请先登录/注册');

@@ -39,11 +39,18 @@ export function StartScreen({
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
-        <button
+        <motion.button
           onClick={onStart}
           className="group relative flex items-center justify-center p-12 transition-all duration-700 hover:scale-105 active:scale-95"
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
         >
           <div className="absolute inset-0 bg-white/30 rounded-full scale-110 opacity-30 group-hover:opacity-60 transition-opacity" />
+          <motion.div
+            className="absolute inset-0 rounded-full border-2 border-[#52B788]/35"
+            animate={{ scale: [1, 1.12, 1.22], opacity: [0.7, 0.35, 0] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+          />
           <div className="absolute inset-0 border border-[#171817]/10 rounded-full scale-125" />
           {/* 春风绿叶装饰 */}
           <div className="absolute -top-8 -left-6 text-4xl opacity-30 group-hover:opacity-50 transition-opacity animate-bounce">🍃</div>
@@ -54,9 +61,16 @@ export function StartScreen({
           <div className="absolute -right-8 top-1/2 -translate-y-1/2 bg-[#52B788] w-6 h-6 flex items-center justify-center shadow-md">
             <span className="text-white text-[10px] font-bold">印</span>
           </div>
-        </button>
+        </motion.button>
 
         <div className="mt-8 flex flex-col items-center gap-3">
+          <motion.p
+            className="text-xs font-bold tracking-[0.22em] text-[#52B788]"
+            animate={{ opacity: [0.35, 1, 0.35] }}
+            transition={{ duration: 1.3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            点击「起卦」开始
+          </motion.p>
           <p className="ink-subtitle text-sm text-[#171817]/55 font-semibold">遇事不决可问春风</p>
           <p className="text-xs text-[#171817]/45 tracking-widest">从这里进入，进行占卜</p>
           {onResumeResult && (
